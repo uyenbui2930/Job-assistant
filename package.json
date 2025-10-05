@@ -1,7 +1,7 @@
 {
   "name": "job-assistant-backend",
   "version": "1.0.0",
-  "description":"Job Assistant AI Backend",
+  "description": "Job Assistant AI Backend",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -9,6 +9,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "openai": "^4.20.0",   
+    "mammoth": "^1.6.0",    
+    "pdf-parse": "^1.1.1",  
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",

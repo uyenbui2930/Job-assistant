@@ -1,26 +1,54 @@
-// test-agent.js - Save this in your project root
-const ResumeScorer = require('./src/agents/resume-scorer');
+// test-agent.js
 
-async function testAgent() {
-  try {
-    const scorer = new ResumeScorer();
+// 1. Import the main scoring function from your new agent file
+const { scoreResumeAgent } = require('./agent/resumeScorer');
+
+// 2. Define the sample inputs (This is where you'd mock data or read a sample resume)
+// NOTE: You must have a file named 'sample-resume.pdf' or 'sample-resume.docx' 
+// in the root directory for this test to run correctly.
+const SAMPLE_RESUME_PATH = './sample-resume.pdf'; 
+
+const SAMPLE_JOB_DESCRIPTION = `
+    Job Title: Senior Node.js Microservices Developer
+    Requirements: 
+    1. 5+ years of experience with Express.js and REST API design.
+    2. Deep knowledge of NoSQL databases, particularly MongoDB.
+    3. Mandatory experience with CI/CD tools (GitHub Actions or Jenkins).
+    4. Proven ability to handle high-traffic applications.
+`;
+
+/**
+ * Main test function to demonstrate the new LLM-powered resume scoring agent.
+ */
+async function runAgentTest() {
+    console.log("--- Starting LLM Resume Scorer Agent Test ---");
+    console.log(`Analyzing resume: ${SAMPLE_RESUME_PATH}`);
     
-    const resumeText = "John Doe Software Engineer with 3 years experience in JavaScript, React, Node.js, and Python. Built web applications using MongoDB and PostgreSQL.";
+    // Call your imported LLM function with the test data
+    const scoreReport = await scoreResumeAgent(
+        SAMPLE_RESUME_PATH, 
+        SAMPLE_JOB_DESCRIPTION
+    );
+
+    // Display the structured output
+    console.log('\n======================================');
+    console.log('         FINAL SCORE REPORT         ');
+    console.log('======================================');
     
-    const jobDescription = "We are seeking a Software Developer with experience in JavaScript, React, and database management. 2+ years experience required.";
-    
-    console.log('🧪 Testing Resume Scorer Agent...');
-    const result = await scorer.analyze(resumeText, jobDescription);
-    
-    console.log('\n✅ Agent Test Results:');
-    console.log('Score:', result.score);
-    console.log('Matched Skills:', result.matchedSkills);
-    console.log('Missing Skills:', result.missingSkills);
-    console.log('Recommendations:', result.recommendations);
-    
-  } catch (error) {
-    console.error('❌ Agent test failed:', error);
-  }
+    if (scoreReport.error) {
+        console.error("Agent failed to produce a score:", scoreReport.error);
+    } else {
+        console.log(`Overall Fit Score: ${scoreReport.overall_score}/100`);
+        console.log('\nStrengths:');
+        scoreReport.strengths.forEach(s => console.log(` - ${s}`));
+        
+        console.log('\nGaps:');
+        scoreReport.gaps.forEach(g => console.log(` - ${g}`));
+        
+        console.log(`\nSummary: ${scoreReport.summary}`);
+    }
+    console.log('======================================\n');
 }
 
-testAgent();
+// Execute the test function
+runAgentTest();
