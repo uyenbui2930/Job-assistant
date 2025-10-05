@@ -1,7 +1,7 @@
 // test-agent.js
 
 // 1. Import the main scoring function from your new agent file
-const { scoreResumeAgent } = require('./agent/resumeScorer');
+const { scoreResumeAgent } = require('./src/agents/agent');
 
 // 2. Define the sample inputs (This is where you'd mock data or read a sample resume)
 // NOTE: You must have a file named 'sample-resume.pdf' or 'sample-resume.docx' 
