@@ -1,18 +1,68 @@
-// agent/scorer.js
-require('dotenv').config(); // Load environment variables from .env
+// CORE AGENT FILE: Combines OpenAI initialization, Document Parsing, and LLM Scoring.
+// This design removes the need for a separate 'utils' folder.
+
+const fs = require('fs');
+const util = require('util');
+require('dotenv').config(); // Load OPENAI_API_KEY from .env
 
 const { OpenAI } = require('openai');
+const pdf = require('pdf-parse'); // For PDF parsing
+const mammoth = require('mammoth'); // For DOCX parsing
 
-// The client automatically uses the OPENAI_API_KEY environment variable
+// Initialize OpenAI client (it automatically uses the OPENAI_API_KEY from .env)
 const openai = new OpenAI(); 
+const readFile = util.promisify(fs.readFile); // Helper for promisifying file reads
 
-console.log("OpenAI client initialized.");
+// --- DOCUMENT PARSING FUNCTIONS (Previously in 'utils/parser.js') ---
 
-// This client will be used for all LLM calls.
-module.exports = { openai };
-// agent/scorer.js (continuation or combined with setup)
-const { openai } = require('./scorer.js'); // Assuming initialization is here
-const { parseResume } = require('../utils/parser'); // Import parser
+/**
+ * Extracts raw text from a DOCX file using mammoth.
+ * @param {string} filePath - Path to the .docx file.
+ * @returns {Promise<string>} The extracted text.
+ */
+async function parseDocx(filePath) {
+    const result = await mammoth.extractRawText({ path: filePath });
+    return result.value;
+}
+
+/**
+ * Extracts raw text from a PDF file using pdf-parse.
+ * @param {string} filePath - Path to the .pdf file.
+ * @returns {Promise<string>} The extracted text.
+ */
+async function parsePdf(filePath) {
+    const dataBuffer = await readFile(filePath);
+    const data = await pdf(dataBuffer);
+    return data.text;
+}
+
+/**
+ * Main function to parse a resume file based on its extension.
+ * @param {string} filePath - Path to the resume file.
+ * @returns {Promise<string>} The extracted text, or null if unsupported.
+ */
+async function parseResume(filePath) {
+    const extension = filePath.split('.').pop().toLowerCase();
+
+    try {
+        if (extension === 'docx') {
+            console.log(`Parsing DOCX: ${filePath}`);
+            return await parseDocx(filePath);
+        } else if (extension === 'pdf') {
+            console.log(`Parsing PDF: ${filePath}`);
+            return await parsePdf(filePath);
+        } else {
+            console.warn(`Unsupported file type: ${extension}`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error during file parsing for ${filePath}:`, error.message);
+        throw new Error(`Failed to parse file: ${filePath}`);
+    }
+}
+
+
+// --- LLM SCORING AGENT FUNCTION ---
 
 /**
  * Uses an LLM to score a resume against a job description.
@@ -21,7 +71,7 @@ const { parseResume } = require('../utils/parser'); // Import parser
  * @returns {Promise<object>} A JSON object containing the score and feedback.
  */
 async function scoreResumeAgent(resumePath, jobDescription) {
-    // 1. Get raw text from the resume
+    // 1. Get raw text from the resume using the local function
     const resumeText = await parseResume(resumePath);
     if (!resumeText) {
         return { error: 'Could not extract text from resume file.' };
@@ -68,7 +118,6 @@ async function scoreResumeAgent(resumePath, jobDescription) {
                 { "role": "system", "content": systemPrompt },
                 { "role": "user", "content": userPrompt }
             ],
-            // **Crucial: Request JSON Object as the response format**
             response_format: { type: "json_object" } 
         });
 
@@ -81,12 +130,19 @@ async function scoreResumeAgent(resumePath, jobDescription) {
     }
 }
 
-// Example usage (for testing)
+
+// Export the main function and run the test if this file is executed directly.
+module.exports = { scoreResumeAgent };
+
+
+// --- Local Test Execution (kept for convenience) ---
 async function runTest() {
+    // --- IMPORTANT: CHANGE THESE INPUTS ---
     const testJobDesc = "Seeking a Node.js Backend Developer with 5+ years of experience, specializing in Express.js, MongoDB, and CI/CD pipelines (GitHub Actions).";
-    // NOTE: You must create a 'sample-resume.pdf' or 'sample-resume.docx' file for this test!
+    // NOTE: Update this path to your actual resume file!
     const testResumePath = './sample-resume.pdf'; 
-    
+    // ----------------------------------------
+
     console.log(`\n--- Running Resume Scorer for: ${testResumePath} ---`);
     
     const scoreResult = await scoreResumeAgent(testResumePath, testJobDesc);
@@ -96,6 +152,5 @@ async function runTest() {
     console.log('---------------------\n');
 }
 
-// Uncomment the line below to test the function (ensure you have the test resume file)
-// runTest(); 
-// module.exports = { scoreResumeAgent }; // Export for use in other parts of the main app
+// Uncomment this line to enable local testing via "node src/agent/agent.js"
+// runTest();
