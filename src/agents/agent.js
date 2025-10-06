@@ -9,9 +9,30 @@ const { OpenAI } = require('openai');
 const pdf = require('pdf-parse'); // For PDF parsing
 const mammoth = require('mammoth'); // For DOCX parsing
 
-// Initialize OpenAI client (it automatically uses the OPENAI_API_KEY from .env)
-const openai = new OpenAI(); 
-const readFile = util.promisify(fs.readFile); // Helper for promisifying file reads
+// 1. Initialize OpenAI client with Gemini compatibility settings
+const openai = new OpenAI({
+    // Use the GEMINI_API_KEY variable from your .env file
+    apiKey: process.env.GEMINI_API_KEY, 
+    
+    // Set the base URL to Google's compatibility endpoint
+    baseURL: process.env.GEMINI_BASE_URL, 
+}); 
+
+const readFile = util.promisify(fs.readFile);
+// Example of how a chat/completion call changes:
+async function generateContent(userPrompt) {
+    const response = await openai.chat.completions.create({
+        // 2. Change the model name from gpt-3.5-turbo/gpt-4 to a Gemini model
+        model: "gemini-2.5-flash", 
+        
+        messages: [
+            { role: "system", content: "You are a document summarization assistant." },
+            { role: "user", content: userPrompt }
+        ],
+    });
+
+    return response.choices[0].message.content;
+}
 
 // --- DOCUMENT PARSING FUNCTIONS (Previously in 'utils/parser.js') ---
 
@@ -113,7 +134,7 @@ async function scoreResumeAgent(resumePath, jobDescription) {
 
     try {
         const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini", // Cost-effective and highly capable
+            model: "gemini-2.5-flash", // Cost-effective and highly capable
             messages: [
                 { "role": "system", "content": systemPrompt },
                 { "role": "user", "content": userPrompt }
